@@ -8,18 +8,123 @@ output:
 
 ## Loading and preprocessing the data
 
+Setup Knitr
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+Reading and preprocessing the data
+```{r reading data}
+data <- read.csv("activity.csv")
+data$date <- as.POSIXct(data$date, format = "%Y-%m-%d")
+
+summary(data)
+```
 
 
 ## What is mean total number of steps taken per day?
 
+Calculate the total number of steps taken per day
+```{r steps data frame}
+total_steps <- aggregate.data.frame(data$steps, list(data$date), sum, na.rm=T)
+names(total_steps) <- c("date", "steps")
+```
 
+Make a histogram of the total number of steps taken each day
+```{r plot 1}
+hist(total_steps$steps, breaks = 10, col = "skyblue", main = "Histogram of total steps taken per Day",
+      xlab = "Total number of steps per day", ylim = c(0,20))
+```
+
+Calculating the mean of the total number of steps taken per day
+```{r mean}
+total_steps_mean <- mean(total_steps$steps)
+total_steps_mean
+```
+
+Calculating the median of the total number of steps taken per day
+```{r median}
+total_steps_median <- median(total_steps$steps)
+total_steps_median
+```
 
 ## What is the average daily activity pattern?
 
+Average steps per 5 minutes interval and making a time series plot
+```{r plot 2}
+average_daily_activity <- aggregate.data.frame(data$steps, by=list(data$interval),mean, na.rm=TRUE)
+names(average_daily_activity) <- c("interval", "mean")
+attach(average_daily_activity)
+plot(interval, mean, type = "l", col="darkblue", lwd=2,
+     main = "Time Series Plot: Average number of steps",
+     ylab = "Average number of steps",
+     xlab = "Interval")
+detach(average_daily_activity)
+```
 
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r max interval}
+average_daily_activity[which.max(average_daily_activity$mean), ]$interval
+```
 
 ## Imputing missing values
 
+Total number of missing values in the dataset 
+```{r NA number}
+sum(is.na(data$steps))
+```
 
+Devise a strategy for filling in all of the missing values in the dataset.
+Creating a new dataset that is equal to the original dataset but with the missing data filled in.
+
+Replacing NA`s with average of steps in 5 minute interval
+
+```{r NA replacement}
+data_complete <- data
+data_complete$steps[is.na(data_complete$steps)] <- round(mean(average_daily_activity$mean))
+```
+
+Making a histogram of the total number of steps taken each day and calculate and report the mean and median total number of steps taken per day.
+```{r new histogram}
+total_steps_new <- aggregate.data.frame(data_complete$steps, list(data_complete$date), sum, na.rm=T)
+names(total_steps_new) <- c("date", "steps")
+
+hist(total_steps_new$steps, breaks = 10, col = "pink", 
+     main = "Histogram of total steps taken per Day",
+     sub = "NA's removed",
+     xlab = "Total number of steps per day", ylim = c(0,30))
+```
+
+Calculating the mean of the new total number of steps taken per day
+```{r mean}
+total_steps_mean2 <- mean(total_steps_new$steps)
+total_steps_mean2
+```
+
+Calculating the median of the new total number of steps taken per day
+```{r median}
+total_steps_median2 <- median(total_steps_new$steps)
+total_steps_median2
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Creating a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r date modification}
+data_complete$NewDate <- as.Date(data_complete$date, format = "%Y-%m-%d")
+data_complete$Weekday <- weekdays(data_complete$NewDate)
+data_complete$dateType <- ifelse(data_complete$Weekday=="sábado" | data_complete$Weekday=="domingo", "weekend","weekday")
+```
+
+Making a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+```{r plot 3}
+average_daily_activity_new <- aggregate(steps~interval+dateType,data=data_complete,mean,na.rm=TRUE)
+library(lattice)
+xyplot(steps ~ interval | factor(dateType),
+       layout = c(1, 2),
+       xlab="Interval",
+       ylab="Average of Number of steps",
+       type="l",
+       lty=1,
+       data=average_daily_activity_new)
+```
